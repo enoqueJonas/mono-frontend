@@ -47,12 +47,14 @@ export function GroupHeaderNav({ group, activeTab }: GroupHeaderNavProps) {
     {
       key: "contributions",
       label: "Contribuições",
-      isImplemented: false,
+      href: `/groups/${group.id}/contributions`,
+      isImplemented: true,
     },
     {
       key: "rotation",
       label: "Rotação",
-      isImplemented: false,
+      href: `/groups/${group.id}/rotation`,
+      isImplemented: true,
     },
     {
       key: "disbursements",
@@ -74,7 +76,6 @@ export function GroupHeaderNav({ group, activeTab }: GroupHeaderNavProps) {
 
   return (
     <div className="space-y-4">
-      {/* Voltar aos Grupos */}
       <div>
         <Link
           href="/groups"
@@ -85,7 +86,6 @@ export function GroupHeaderNav({ group, activeTab }: GroupHeaderNavProps) {
         </Link>
       </div>
 
-      {/* Cabeçalho do Grupo */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -104,7 +104,6 @@ export function GroupHeaderNav({ group, activeTab }: GroupHeaderNavProps) {
             )}
           </div>
 
-          {/* Badges de Estado e Função */}
           <div className="flex items-center gap-2 shrink-0">
             {group.status && <StatusBadge status={group.status} size="default" />}
             {userRole && <StatusBadge status={userRole} size="default" />}
@@ -112,7 +111,6 @@ export function GroupHeaderNav({ group, activeTab }: GroupHeaderNavProps) {
         </div>
       </div>
 
-      {/* Navegação Local com Scroll Horizontal no Mobile */}
       <div className="border-b border-slate-200">
         <nav
           className="flex gap-1 overflow-x-auto pb-1 -mb-px no-scrollbar"
