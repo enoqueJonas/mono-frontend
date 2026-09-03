@@ -1,0 +1,6 @@
+{
+  "name": "MONO - Sistema de Segurança para Xitique",
+  "description": "Sistema de segurança baseado em blockchain e identidade descentralizada para cooperativas financeiras informais (Xitique).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
