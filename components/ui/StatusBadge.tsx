@@ -14,28 +14,22 @@ import {
 import { cn } from "@/lib/utils";
 
 export type BadgeStatus =
-  // Membros / Geral
   | "ACTIVE"
   | "SUSPENDED"
   | "LEFT"
-  // Rotação
   | "PENDING"
   | "CURRENT"
   | "COMPLETED"
   | "SKIPPED"
-  // Contribuições
   | "CONFIRMED"
   | "FAILED"
   | "REVERSED"
-  // Desembolsos
   | "AWAITING_CONSENSUS"
   | "APPROVED"
-  // Penalizações
   | "RESOLVED"
-  // Credenciais
   | "VALID"
   | "REVOKED"
-  // Roles
+  | "EXPIRED"
   | "MANAGER"
   | "TREASURER"
   | "MEMBER"
@@ -69,7 +63,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
     classes: "bg-amber-50 text-amber-700 border border-amber-200",
   },
   CURRENT: {
-    label: "Beneficiário atual",
+    label: "Beneficiário actual",
     icon: <Sparkles className="w-3 h-3 text-blue-600" />,
     classes: "bg-blue-50 text-blue-700 border border-blue-200 font-semibold",
   },
@@ -123,7 +117,11 @@ const STATUS_MAP: Record<string, StatusConfig> = {
     icon: <XCircle className="w-3 h-3 text-rose-600" />,
     classes: "bg-rose-50 text-rose-700 border border-rose-100",
   },
-  // Funções
+  EXPIRED: {
+    label: "Expirada",
+    icon: <Clock className="w-3 h-3 text-slate-500" />,
+    classes: "bg-slate-100 text-slate-600 border border-slate-200",
+  },
   MANAGER: {
     label: "Gestor",
     icon: <ShieldCheck className="w-3 h-3 text-slate-700" />,
