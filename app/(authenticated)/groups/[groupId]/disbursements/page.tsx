@@ -78,7 +78,7 @@ export default function DisbursementsPage({ params }: PageProps) {
         setSuccess("Desembolso aprovado com sucesso.");
       } else {
         await disbursementsApi.completeDisbursement(groupId, pendingAction.item.id);
-        setSuccess("Desembolso concluído com sucesso. A rotação foi avançada pelo backend.");
+        setSuccess("Desembolso concluído com sucesso. O próximo membro passou a ser o beneficiário actual.");
       }
       setItems(await disbursementsApi.listGroupDisbursements(groupId));
       setPendingAction(null);
@@ -92,7 +92,7 @@ export default function DisbursementsPage({ params }: PageProps) {
     <article key={item.id} className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Ciclo {item.cycle_number}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Ciclo {item.cycle_number} · Posição {item.rotation_position}</p>
           <h3 className="mt-1 font-semibold text-slate-900">{item.beneficiary_name || "Beneficiário"}</h3>
           <p className="mt-2 text-xl font-bold text-slate-900">{formatMoney(item.amount, item.currency)}</p>
         </div>
@@ -125,7 +125,7 @@ export default function DisbursementsPage({ params }: PageProps) {
 
         {isManager && <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
           <div className="flex items-center gap-2"><PlusCircle className="h-5 w-5 text-slate-700" /><h2 className="font-semibold text-slate-900">Criar desembolso</h2></div>
-          <p className="text-sm text-slate-500">Indique apenas o ciclo. O backend determina o beneficiário, valor, moeda e período a partir da rotação e das contribuições confirmadas.</p>
+          <p className="text-sm text-slate-500">Indique apenas o ciclo. O beneficiário, o valor, a moeda e o período são definidos automaticamente com base na rotação e nas contribuições confirmadas.</p>
           {formError && <ErrorAlert message={formError} onDismiss={() => setFormError(null)} />}
           <form onSubmit={handleSubmit(createDisbursement)} className="flex max-w-sm flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
@@ -148,7 +148,7 @@ export default function DisbursementsPage({ params }: PageProps) {
         onClose={() => { if (!isActionRunning) setPendingAction(null); }}
         onConfirm={runAction}
         title={pendingAction?.type === "approve" ? "Aprovar desembolso" : "Concluir desembolso"}
-        description={pendingAction?.type === "approve" ? "Confirma a aprovação deste desembolso?" : "Ao concluir, o backend marca o desembolso como concluído e avança a rotação para o próximo beneficiário."}
+        description={pendingAction?.type === "approve" ? "Confirma a aprovação deste desembolso?" : "Ao concluir este desembolso, o próximo membro da rotação passará a ser o beneficiário actual."}
         confirmText={pendingAction?.type === "approve" ? "Aprovar" : "Concluir"}
         cancelText="Cancelar"
         isLoading={isActionRunning}
