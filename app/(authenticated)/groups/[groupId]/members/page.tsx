@@ -244,10 +244,10 @@ export default function GroupMembersPage({ params }: GroupMembersPageProps) {
                       type="submit"
                       disabled={isAdding}
                       isLoading={isAdding}
-                      className="shrink-0"
+                      leftIcon={<UserPlus className="w-4 h-4" />}
+                      className="shrink-0 whitespace-nowrap"
                     >
-                      <UserPlus className="w-4 h-4 mr-1.5" />
-                      <span>Adicionar membro</span>
+                      Adicionar membro
                     </Button>
                   </div>
                   <p className="mt-1.5 text-xs text-slate-500">
