@@ -7,6 +7,7 @@ export interface Disbursement {
   beneficiary: string;
   beneficiary_name: string;
   rotation_order: string;
+  rotation_position: number;
   group_settings: string;
   settings_version: number;
   cycle_number: number;
