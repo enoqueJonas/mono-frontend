@@ -16,10 +16,7 @@ export const loginSchema = z.object({
         message: "Introduza um número de telefone válido (ex: +258841234567).",
       }
     ),
-  password: z
-    .string()
-    .min(1, "A palavra-passe é obrigatória.")
-    .min(6, "A palavra-passe deve ter pelo menos 6 caracteres."),
+  password: z.string().min(1, "A palavra-passe é obrigatória."),
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;
