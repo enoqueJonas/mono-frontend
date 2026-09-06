@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Check, Copy, FileJson, ShieldX } from "lucide-react";
 import { credentialsApi } from "@/lib/api/credentials";
 import { groupsApi } from "@/lib/api/groups";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatMoney } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Skeleton } from "@/components/ui/LoadingState";
@@ -15,6 +15,12 @@ import type { Group } from "@/types/groups";
 
 interface PageProps {
   params: Promise<{ credentialId: string }>;
+}
+
+interface ContributionHistorySummary {
+  contributionCount: number | null;
+  totalAmount: string | null;
+  currency: string | null;
 }
 
 export default function CredentialDetailPage({ params }: PageProps) {
@@ -60,6 +66,11 @@ export default function CredentialDetailPage({ params }: PageProps) {
           group.my_role === "MANAGER")
     );
   }, [credential, groups]);
+
+  const contributionSummary = useMemo(
+    () => getContributionHistorySummary(credential?.credential_document),
+    [credential]
+  );
 
   const handleCopy = async () => {
     if (!credential) return;
@@ -110,7 +121,7 @@ export default function CredentialDetailPage({ params }: PageProps) {
             </div>
 
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Info label="Tipo" value={credential.credential_type} />
+              <Info label="Tipo" value={credentialTypeLabel(credential.credential_type)} />
               <Info label="Período" value={`${formatDate(credential.period_start)} – ${formatDate(credential.period_end)}`} />
               <Info label="Emitida por" value={credential.issued_by_name || "—"} />
               <Info label="Válida desde" value={formatDate(credential.valid_from)} />
@@ -118,12 +129,33 @@ export default function CredentialDetailPage({ params }: PageProps) {
               <Info label="Revogada em" value={credential.revoked_at ? formatDate(credential.revoked_at) : "—"} />
             </dl>
 
+            {(contributionSummary.contributionCount !== null || contributionSummary.totalAmount) && (
+              <div className="space-y-3 border-t border-slate-100 pt-4">
+                <h2 className="text-sm font-semibold text-slate-900">Resumo das contribuições</h2>
+                <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Info
+                    label="Contribuições confirmadas"
+                    value={contributionSummary.contributionCount?.toString() || "—"}
+                  />
+                  <Info
+                    label="Total contribuído"
+                    value={
+                      contributionSummary.totalAmount && contributionSummary.currency
+                        ? formatMoney(contributionSummary.totalAmount, contributionSummary.currency)
+                        : "—"
+                    }
+                  />
+                  <Info label="Moeda" value={contributionSummary.currency || "—"} />
+                </dl>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-500">Emissor</p>
+              <p className="text-xs font-medium text-slate-500">DID do emissor</p>
               <p className="break-all rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700">{credential.issuer}</p>
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-500">Titular DID</p>
+              <p className="text-xs font-medium text-slate-500">DID do titular</p>
               <p className="break-all rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700">{credential.holder}</p>
             </div>
             <div className="space-y-2">
@@ -167,14 +199,13 @@ export default function CredentialDetailPage({ params }: PageProps) {
                 <ShieldX className="mt-0.5 h-5 w-5 text-rose-600" />
                 <div>
                   <h2 className="font-semibold text-slate-900">Revogar Credencial Verificável</h2>
-                  <p className="mt-1 text-xs text-slate-500">A revogação é permanente. O motivo é opcional segundo a API.</p>
+                  <p className="mt-1 text-xs text-slate-500">A revogação é permanente. Pode indicar um motivo, se necessário.</p>
                 </div>
               </div>
               {revokeError && <ErrorAlert message={revokeError} onDismiss={() => setRevokeError(null)} />}
               <textarea
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
-                maxLength={500}
                 rows={3}
                 placeholder="Motivo da revogação (opcional)"
                 disabled={isRevoking}
@@ -196,4 +227,36 @@ function Info({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 break-words text-sm font-semibold text-slate-800">{value || "—"}</dd>
     </div>
   );
+}
+
+function credentialTypeLabel(type: string): string {
+  if (type === "CONTRIBUTION_HISTORY") return "Histórico de contribuições";
+  return type;
+}
+
+function getContributionHistorySummary(document: unknown): ContributionHistorySummary {
+  const empty: ContributionHistorySummary = {
+    contributionCount: null,
+    totalAmount: null,
+    currency: null,
+  };
+
+  if (!document || typeof document !== "object") return empty;
+
+  const credentialSubject = (document as Record<string, unknown>).credentialSubject;
+  if (!credentialSubject || typeof credentialSubject !== "object") return empty;
+
+  const contributionHistory = (credentialSubject as Record<string, unknown>).contributionHistory;
+  if (!contributionHistory || typeof contributionHistory !== "object") return empty;
+
+  const history = contributionHistory as Record<string, unknown>;
+
+  return {
+    contributionCount:
+      typeof history.contributionCount === "number" ? history.contributionCount : null,
+    totalAmount:
+      typeof history.totalAmount === "string" ? history.totalAmount : null,
+    currency:
+      typeof history.currency === "string" ? history.currency : null,
+  };
 }
