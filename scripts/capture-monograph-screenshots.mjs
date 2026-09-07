@@ -53,16 +53,60 @@ async function capture(filename, url, options = {}) {
   console.log(`✓ ${filename}`);
 }
 
+async function login() {
+  await page.getByLabel("Número de telefone").fill(phone);
+  await page.getByLabel("Palavra-passe").fill(password);
+
+  const loginResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().includes("/api/v1/accounts/login/"),
+    { timeout: 15000 }
+  );
+
+  await page.getByRole("button", { name: "Entrar" }).click();
+
+  const response = await loginResponsePromise;
+  console.log(`Login API: ${response.status()} ${response.url()}`);
+
+  if (!response.ok()) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `A API de login respondeu com HTTP ${response.status()}. ${body}`
+    );
+  }
+
+  try {
+    await page.waitForURL(/\/dashboard(?:\/|\?|$)/, {
+      timeout: 15000,
+      waitUntil: "domcontentloaded",
+    });
+  } catch (error) {
+    const diagnosticPath = path.join(outputDir, "login-failure.png");
+    await page.screenshot({ path: diagnosticPath, fullPage: true });
+
+    const visibleText = (await page.locator("body").innerText())
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 1000);
+
+    throw new Error(
+      `O login respondeu com sucesso, mas a aplicação não chegou ao Dashboard. ` +
+        `URL actual: ${page.url()}. Screenshot: ${diagnosticPath}. ` +
+        `Conteúdo visível: ${visibleText}`,
+      { cause: error }
+    );
+  }
+
+  await settle();
+}
+
 try {
   // 01 — Login: capturado antes de criar uma sessão autenticada.
   await capture("01-login.png", "/login", { fullPage: false });
 
-  // Autenticação real no sistema.
-  await page.getByLabel("Número de telefone").fill(phone);
-  await page.getByLabel("Palavra-passe").fill(password);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await page.waitForURL(/\/dashboard/);
-  await settle();
+  // Autenticação real no sistema, sincronizada com a resposta da API.
+  await login();
 
   await page.screenshot({
     path: path.join(outputDir, "02-dashboard.png"),
