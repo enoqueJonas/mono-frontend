@@ -24,6 +24,15 @@ export const credentialsApi = {
     return Array.isArray(data) ? data : [];
   },
 
+  async listGroupCredentials(groupId: string): Promise<VerifiableCredential[]> {
+    const response = await apiClient<unknown>(
+      `/api/v1/credentials/groups/${groupId}/`,
+      { method: "GET" }
+    );
+    const data = unwrapData<VerifiableCredential[] | undefined>(response);
+    return Array.isArray(data) ? data : [];
+  },
+
   async getCredential(credentialId: string): Promise<VerifiableCredential> {
     const response = await apiClient<unknown>(
       `/api/v1/credentials/${credentialId}/`,
