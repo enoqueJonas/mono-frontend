@@ -6,7 +6,6 @@ const baseURL = process.env.MONO_BASE_URL || "http://127.0.0.1:3000";
 const phone = process.env.MONO_SCREENSHOT_PHONE;
 const password = process.env.MONO_SCREENSHOT_PASSWORD;
 const groupId = process.env.MONO_SCREENSHOT_GROUP_ID;
-const credentialId = process.env.MONO_SCREENSHOT_CREDENTIAL_ID;
 const outputDir = path.resolve(process.env.MONO_SCREENSHOT_DIR || "monograph-screenshots");
 
 if (!phone || !password) throw new Error("Defina MONO_SCREENSHOT_PHONE e MONO_SCREENSHOT_PASSWORD antes de executar o script.");
@@ -44,6 +43,9 @@ async function settle() {
 async function capture(filename, url, options = {}) {
   await page.goto(`${baseURL}${url}`, { waitUntil: "domcontentloaded" });
   await settle();
+  if (options.waitFor) {
+    await options.waitFor();
+  }
   if (options.prepare) {
     await options.prepare();
     await page.waitForTimeout(300);
@@ -120,6 +122,42 @@ async function login() {
   await settle();
 }
 
+async function captureCredentialDetail() {
+  await page.goto(`${baseURL}/credentials`, { waitUntil: "domcontentloaded" });
+  await settle();
+
+  const credentialLinks = page.locator('a[href^="/credentials/"]');
+  const count = await credentialLinks.count();
+
+  if (count === 0) {
+    throw new Error(
+      "Nenhuma credencial verificável disponível para a captura de detalhe. " +
+      "Emita pelo menos uma credencial para o utilizador autenticado antes de executar o script."
+    );
+  }
+
+  const href = await credentialLinks.first().getAttribute("href");
+  if (!href) {
+    throw new Error("Foi encontrada uma credencial na lista, mas o respetivo link não contém href.");
+  }
+
+  console.log(`Credencial selecionada automaticamente: ${href}`);
+
+  await page.goto(`${baseURL}${href}`, { waitUntil: "domcontentloaded" });
+  await settle();
+
+  await page.getByText("Credencial Verificável", { exact: true }).waitFor({
+    state: "visible",
+    timeout: 10000,
+  });
+
+  await page.screenshot({
+    path: path.join(outputDir, "10-credential-details.png"),
+    fullPage: true,
+  });
+  console.log("✓ 10-credential-details.png");
+}
+
 try {
   await capture("01-login.png", "/login", { fullPage: false });
   await login();
@@ -140,9 +178,7 @@ try {
   await capture("07-rotation.png", `/groups/${groupId}/rotation`);
   await capture("08-disbursements.png", `/groups/${groupId}/disbursements`);
   await capture("09-credentials.png", "/credentials");
-
-  if (credentialId) await capture("10-credential-details.png", `/credentials/${credentialId}`);
-  else console.log("– 10-credential-details.png ignorado: MONO_SCREENSHOT_CREDENTIAL_ID não definido.");
+  await captureCredentialDetail();
 
   console.log(`\nScreenshots guardados em: ${outputDir}`);
 } finally {
