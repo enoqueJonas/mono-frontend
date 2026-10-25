@@ -195,3 +195,38 @@ export const groupsApi = {
     });
   },
 };
+
+export type BlockchainIntegrityResult = {
+  status: "INTEGRITY_CONFIRMED" | "INTEGRITY_MISMATCH" | "NOT_ANCHORED";
+  calculated_hash: string;
+  blockchain_hash: string | null;
+  version?: number;
+  contribution_id?: string;
+};
+
+export type BlockchainHistoryEntry = {
+  anchor_type: "CREDENTIAL" | "GROUP_SETTINGS" | "CONTRIBUTION" | "DISBURSEMENT";
+  content_hash: string;
+  transaction_hash: string;
+  block_number: number;
+  status: string;
+  anchored_at: string;
+};
+
+export const blockchainAuditApi = {
+  async verifyGroupSettings(groupId: string, version: number): Promise<BlockchainIntegrityResult> {
+    const response = await apiClient<{data: BlockchainIntegrityResult}>(
+      `/api/v1/groups/${groupId}/settings/${version}/integrity/`,
+      { method: "GET" }
+    );
+    return response.data;
+  },
+
+  async listHistory(groupId: string): Promise<BlockchainHistoryEntry[]> {
+    const response = await apiClient<{data: BlockchainHistoryEntry[]}>(
+      `/api/v1/groups/${groupId}/blockchain-history/`,
+      { method: "GET" }
+    );
+    return response.data;
+  },
+};
