@@ -28,6 +28,13 @@ function unwrapObject<T>(response: unknown): T {
 }
 
 export const contributionsApi = {
+  async verifyIntegrity(groupId: string, contributionId: string): Promise<import('./groups').BlockchainIntegrityResult> {
+    const response = await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/contributions/${contributionId}/integrity/`,
+      { method: 'GET' }
+    );
+    return unwrapObject<import('./groups').BlockchainIntegrityResult>(response);
+  },
   async listGroupContributions(groupId: string | number): Promise<Contribution[]> {
     const response = await apiClient<unknown>(
       `/api/v1/groups/${groupId}/contributions/`,
