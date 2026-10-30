@@ -85,7 +85,7 @@ try {
   await page.getByRole('button', { name: 'Registar contribuição' }).click();
   await page.getByText('Contribuição registada com sucesso.').waitFor({ timeout: 25000 });
   const contributions = await api('/api/v1/groups/' + groupId + '/contributions/');
-  assert(contributions.status === 200 && contributions.data.data.some(x => String(x.member_id ?? x.group_member_id) === String(holder.id) && x.status === 'CONFIRMED') , 'Contribution not confirmed');
+  assert(contributions.status === 200 && contributions.data.data.some(x => String(x.member ?? x.member_id ?? x.group_member_id) === String(holder.id) && x.status === 'CONFIRMED') , 'Contribution not confirmed');
   console.log('PASS UI->API->PostgreSQL->Ganache manual contribution');
 
   // Issue VC in the frontend (signed by the backend and anchored in Ganache).
