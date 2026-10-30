@@ -5,6 +5,7 @@ The fixed test key and phone numbers are NOT real credentials.
 """
 import json
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from web3 import Web3
 
 ROOT = Path(__file__).resolve().parents[2]
 BACKEND = Path(os.environ.get("MONO_BACKEND_DIR", ROOT.parent / "backend"))
+sys.path.insert(0, str(BACKEND))
 w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))
 for attempt in range(30):
     if w3.is_connected():
