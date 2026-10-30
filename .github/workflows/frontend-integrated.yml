@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: enoqueJonas/mono-backend
-          ref: audit/chain-db-consistency-recovery
+          ref: 01117c7c950f384ecd30332fa88f24826136792c
           path: backend
 
       - name: Node.js 22
