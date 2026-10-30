@@ -1,0 +1,84 @@
+name: MONO Frontend Validation (isolated)
+
+on:
+  push:
+    branches:
+      - qa/frontend-execution-20261030
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-quality-and-browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8000"
+      CI: "true"
+
+    steps:
+      - name: Checkout frontend source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Check TypeScript
+        run: npm run lint
+
+      - name: Build Next.js application
+        run: npm run build
+
+      - name: Install Chromium for browser smoke test
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser smoke test (public and unauthenticated routes only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run start > /tmp/mono-next.log 2>&1 &
+          APP_PID=$!
+          trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 75); do
+            if curl -fsS http://127.0.0.1:3000/login > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/mono-next.log
+            echo "Frontend did not start" >&2
+            exit 1
+          fi
+          node --input-type=module <<'JS'
+          import { chromium } from '@playwright/test';
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+          try {
+            await page.goto('http://127.0.0.1:3000/login', { waitUntil: 'domcontentloaded' });
+            await page.getByRole('heading', { name: 'Entrar na conta' }).waitFor({ timeout: 15000 });
+            await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+            await page.getByText('Introduza o seu número de telefone', { exact: false }).first().waitFor();
+            await page.goto('http://127.0.0.1:3000/dashboard', { waitUntil: 'domcontentloaded' });
+            await page.waitForURL('**/login', { timeout: 15000 });
+            await page.setViewportSize({ width: 390, height: 844 });
+            await page.goto('http://127.0.0.1:3000/login', { waitUntil: 'domcontentloaded' });
+            await page.getByRole('button', { name: 'Entrar', exact: true }).waitFor({ timeout: 15000 });
+            console.log('PASS: Login form, required-field feedback, unauthenticated redirect, mobile rendering');
+          } finally {
+            await browser.close();
+          }
+          JS
+
+      - name: Print server logs if validation fails
+        if: failure()
+        run: cat /tmp/mono-next.log 2>/dev/null || true
