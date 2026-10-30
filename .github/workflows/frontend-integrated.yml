@@ -1,0 +1,171 @@
+name: MONO Frontend Real Integration (isolated)
+
+on:
+  push:
+    branches:
+      - qa/frontend-execution-20261030
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-frontend-backend-blockchain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8000"
+      DJANGO_SETTINGS_MODULE: "config.settings_integration"
+      DEBUG: "true"
+      BLOCKCHAIN_RPC_URL: "http://127.0.0.1:8545"
+      MONO_BACKEND_DIR: ${{ github.workspace }}/backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: mono_integration
+          POSTGRES_USER: mono_test
+          POSTGRES_PASSWORD: mono_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mono_test -d mono_integration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - name: Checkout frontend isolated QA branch
+        uses: actions/checkout@v4
+        with:
+          path: frontend
+
+      - name: Checkout backend audited, unmerged branch
+        uses: actions/checkout@v4
+        with:
+          repository: enoqueJonas/mono-backend
+          ref: audit/chain-db-consistency-recovery
+          path: backend
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install backend test dependencies
+        working-directory: backend
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Install Ganache and Solidity compiler
+        working-directory: backend
+        run: npm install --no-save --no-audit --no-fund ganache@7.9.2 solc@0.8.20
+
+      - name: Compile ContributionRegistry for its missing backend ABI
+        working-directory: backend
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const solc = require('solc');
+          const code = fs.readFileSync('smart_contracts/contracts/ContributionRegistry.sol', 'utf8');
+          const input = {
+            language: 'Solidity',
+            sources: { 'ContributionRegistry.sol': { content: code } },
+            settings: { outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } } },
+          };
+          const out = JSON.parse(solc.compile(JSON.stringify(input)));
+          const errors = (out.errors || []).filter(item => item.severity === 'error');
+          if (errors.length) throw new Error(JSON.stringify(errors));
+          const compiled = out.contracts['ContributionRegistry.sol'].ContributionRegistry;
+          fs.writeFileSync('blockchain/abi/ContributionRegistry.json', JSON.stringify({
+            abi: compiled.abi,
+            bytecode: '0x' + compiled.evm.bytecode.object,
+          }));
+          console.log('Created transient ContributionRegistry ABI for local integration only');
+          JS
+
+      - name: Start funded, disposable Ganache network
+        working-directory: backend
+        run: |
+          ./node_modules/.bin/ganache \
+            --server.host 127.0.0.1 \
+            --server.port 8545 \
+            --chain.chainId 1337 \
+            --wallet.accounts="0x0000000000000000000000000000000000000000000000000000000000000001,100000000000000000000" \
+            > /tmp/mono-e2e-ganache.log 2>&1 &
+          echo $! > /tmp/mono-e2e-ganache.pid
+
+      - name: Apply Django migrations in disposable PostgreSQL
+        working-directory: backend
+        run: python manage.py migrate --noinput
+
+      - name: Deploy three contracts and seed synthetic identities
+        working-directory: backend
+        run: python ../frontend/scripts/qa/bootstrap_integrated_demo.py
+
+      - name: Build real Next.js frontend
+        working-directory: frontend
+        run: |
+          npm install --no-audit --no-fund
+          npm run lint
+          npm run build
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Launch both HTTP servers and execute real browser/contract path
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd ../backend && python manage.py runserver 127.0.0.1:8000 --noreload > /tmp/mono-e2e-django.log 2>&1) &
+          BACKEND_PID=$!
+          npm run start > /tmp/mono-e2e-next.log 2>&1 &
+          FRONTEND_PID=$!
+          trap 'kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || true' EXIT
+          api_ready=0
+          front_ready=0
+          for attempt in $(seq 1 90); do
+            if curl -sS --max-time 2 -o /dev/null http://127.0.0.1:8000/api/v1/accounts/me/ 2>/dev/null; then
+              api_ready=1
+            fi
+            if curl -fsS --max-time 2 http://127.0.0.1:3000/login > /dev/null 2>&1; then
+              front_ready=1
+            fi
+            if [ "$api_ready" = 1 ] && [ "$front_ready" = 1 ]; then break; fi
+            sleep 2
+          done
+          if [ "$api_ready" != 1 ] || [ "$front_ready" != 1 ]; then
+            echo "Server readiness failed: API=$api_ready frontend=$front_ready"
+            cat /tmp/mono-e2e-django.log /tmp/mono-e2e-next.log
+            exit 1
+          fi
+          node scripts/qa/integrated_demo_smoke.mjs
+
+      - name: Diagnostics for any failure
+        if: failure()
+        run: |
+          echo '--- Ganache ---'
+          tail -n 100 /tmp/mono-e2e-ganache.log || true
+          echo '--- Django ---'
+          tail -n 200 /tmp/mono-e2e-django.log || true
+          echo '--- Next.js ---'
+          tail -n 120 /tmp/mono-e2e-next.log || true
+
+      - name: Upload failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-failure-screenshot
+          path: frontend/test-artifacts
+          if-no-files-found: ignore
