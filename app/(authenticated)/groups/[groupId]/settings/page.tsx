@@ -75,7 +75,7 @@ export default function GroupSettingsPage({ params }: GroupSettingsPageProps) {
       contribution_frequency: "MONTHLY",
       maximum_members: 10,
       rotation_strategy: "FIXED_ORDER",
-      requires_consensus: false,
+      requires_consensus: true,
       allow_manual_contributions: true,
     },
   });
@@ -97,7 +97,7 @@ export default function GroupSettingsPage({ params }: GroupSettingsPageProps) {
           maximum_members: Number(data.settings.maximum_members) || 10,
           rotation_strategy:
             data.settings.rotation_strategy || "FIXED_ORDER",
-          requires_consensus: Boolean(data.settings.requires_consensus),
+          requires_consensus: true,
           allow_manual_contributions: Boolean(
             data.settings.allow_manual_contributions
           ),
@@ -148,7 +148,7 @@ export default function GroupSettingsPage({ params }: GroupSettingsPageProps) {
         contribution_frequency: data.contribution_frequency,
         maximum_members: Number(data.maximum_members),
         rotation_strategy: data.rotation_strategy,
-        requires_consensus: Boolean(data.requires_consensus),
+        requires_consensus: true,
         allow_manual_contributions: Boolean(data.allow_manual_contributions),
       };
 
@@ -401,24 +401,10 @@ export default function GroupSettingsPage({ params }: GroupSettingsPageProps) {
 
                 {/* Opções Booleanas de Governança */}
                 <div className="pt-2 border-t border-slate-100 space-y-4">
-                  <label className="flex items-start gap-3 cursor-pointer group">
-                    <input
-                      id="settings-consensus-checkbox"
-                      type="checkbox"
-                      disabled={isSaving}
-                      {...register("requires_consensus")}
-                      className="mt-1 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
-                    />
-                    <div>
-                      <span className="text-sm font-medium text-slate-900 block group-hover:text-slate-800">
-                        Requer consenso para desembolsos
-                      </span>
-                      <span className="text-xs text-slate-500 block leading-relaxed">
-                        Exige a aprovação da maioria dos membros antes de libertar
-                        o fundo de rotação.
-                      </span>
-                    </div>
-                  </label>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-sm font-medium text-slate-900">Aprovação independente obrigatória</p>
+                    <p className="mt-1 text-xs text-slate-600">Esta regra não pode ser desactivada por um gestor. O registo de conclusão não transfere fundos por si só.</p>
+                  </div>
 
                   <label className="flex items-start gap-3 cursor-pointer group">
                     <input
