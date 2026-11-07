@@ -519,18 +519,10 @@ export default function GroupSettingsPage({ params }: GroupSettingsPageProps) {
                   </span>
                   <div className="flex flex-col gap-1.5 text-xs text-slate-700">
                     <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          group.settings?.requires_consensus
-                            ? "bg-emerald-500"
-                            : "bg-slate-300"
-                        }`}
-                      />
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
                       <span>
-                        Requer consenso para desembolsos:{" "}
-                        <strong className="text-slate-900">
-                          {group.settings?.requires_consensus ? "Sim" : "Não"}
-                        </strong>
+                        Aprovação independente para novos desembolsos:{" "}
+                        <strong className="text-slate-900">Obrigatória</strong>
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
