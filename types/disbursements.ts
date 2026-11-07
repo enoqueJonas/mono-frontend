@@ -15,6 +15,11 @@ export interface Disbursement {
   amount: string;
   currency: string;
   status: DisbursementStatus;
+  proposed_by?: string | null;
+  required_approvals?: number;
+  approval_count?: number;
+  eligible_approver_ids?: string[];
+  approved_by_ids?: string[];
   requested_at: string;
   completed_at: string | null;
   failure_reason: string | null;
