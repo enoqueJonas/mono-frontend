@@ -53,7 +53,7 @@ export default function NewGroupPage() {
     mode: "onBlur",
   });
 
-  const requiresConsensus = watch("settings.requires_consensus");
+
   const allowManualContributions = watch("settings.allow_manual_contributions");
 
   const handleNextStep = async () => {
@@ -95,7 +95,7 @@ export default function NewGroupPage() {
           contribution_frequency: data.settings.contribution_frequency,
           maximum_members: Number(data.settings.maximum_members),
           rotation_strategy: data.settings.rotation_strategy,
-          requires_consensus: Boolean(data.settings.requires_consensus),
+          requires_consensus: true,
           allow_manual_contributions: Boolean(
             data.settings.allow_manual_contributions
           ),
@@ -383,21 +383,10 @@ export default function NewGroupPage() {
 
             {/* Governação e Contribuições Manuais */}
             <div className="space-y-3 pt-2 border-t border-slate-100">
-              <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer min-h-[44px]">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
-                  {...register("settings.requires_consensus")}
-                />
-                <div className="text-xs">
-                  <span className="font-semibold text-slate-900 block">
-                    Requer consenso
-                  </span>
-                  <span className="text-slate-500 leading-relaxed">
-                    Exige aprovação dos membros da cooperativa antes da liquidação dos desembolsos.
-                  </span>
-                </div>
-              </label>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="font-semibold text-slate-900">Aprovação independente obrigatória</p>
+                <p className="mt-1 text-slate-600">Os desembolsos exigem votos de membros elegíveis diferentes do proponente e do beneficiário. Não é possível desactivar esta protecção.</p>
+              </div>
 
               <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer min-h-[44px]">
                 <input
