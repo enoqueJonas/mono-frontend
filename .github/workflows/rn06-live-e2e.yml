@@ -44,7 +44,7 @@ jobs:
         with:
           repository: enoqueJonas/mono-backend
           # Pinned for reproducibility; deliberately do not pull default master.
-          ref: 62758edef4297eb22b9641dd29e003555ffd5157
+          ref: a669916c6fcadd934d4aa3ef830c68adbbfbf9cc
           path: backend
 
       - uses: actions/setup-python@v5
