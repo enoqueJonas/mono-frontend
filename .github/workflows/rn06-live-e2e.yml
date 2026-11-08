@@ -44,7 +44,7 @@ jobs:
         with:
           repository: enoqueJonas/mono-backend
           # Pinned for reproducibility; deliberately do not pull default master.
-          ref: 73979868a99ed7cf47912138ea54d79c44d5b188
+          ref: 40626bde199fcc8bf7ddd903c54267ff44d77c57
           path: backend
 
       - name: Refuse stale backend pin relative to RN06 branch
