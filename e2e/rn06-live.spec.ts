@@ -57,7 +57,7 @@ test("RN06: real login + independent votes + administrative completion", async (
     if (role !== "outsider") {
       await page.goto(`${uiBase}/groups/${fixture.groupId}/disbursements`);
       await expect(
-        page.getByRole("heading", { name: "Xitique RN06 — ensaio automatizado" })
+        page.getByRole("heading", { name: "Xitique RN06 — baseline" })
       ).toBeVisible();
     }
     return { context, page, token: token! };
