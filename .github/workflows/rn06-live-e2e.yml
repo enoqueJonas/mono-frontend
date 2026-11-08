@@ -1,0 +1,107 @@
+name: RN06 real-browser integration (Next.js + Django + PostgreSQL)
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  rn06-live-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: mono_integration
+          POSTGRES_USER: mono_test
+          POSTGRES_PASSWORD: mono_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mono_test -d mono_integration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # All accounts and passwords below exist only in this disposable CI database.
+      RN06_E2E_PASSWORD: synthetic-local-test-Strong123!
+      RN06_E2E_FIXTURE_PATH: ${{ github.workspace }}/rn06-e2e-fixture.json
+      RN06_LIVE_E2E_SEED: "1"
+      RN06_E2E_UI_URL: http://127.0.0.1:3000
+      RN06_E2E_API_URL: http://127.0.0.1:8000
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+      DJANGO_SETTINGS_MODULE: config.settings_integration
+      DEBUG: "1"
+
+    steps:
+      - name: Checkout frontend code under review
+        uses: actions/checkout@v4
+
+      - name: Checkout specific backend RN06 commit (not master)
+        uses: actions/checkout@v4
+        with:
+          repository: enoqueJonas/mono-backend
+          # Pinned for reproducibility; deliberately do not pull default master.
+          ref: 62758edef4297eb22b9641dd29e003555ffd5157
+          path: backend
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install backend and frontend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements-dev.txt
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Migrate ephemeral PostgreSQL and seed real test identities
+        working-directory: backend
+        run: |
+          python manage.py migrate --noinput
+          python manage.py shell -c 'exec(open("integration_tests/seed_rn06_ui.py").read())'
+          test -s "$RN06_E2E_FIXTURE_PATH"
+
+      - name: Build actual Next.js application
+        run: npm run build
+
+      - name: Boot Django API and Next.js
+        run: |
+          (cd backend && nohup python manage.py runserver --noreload 127.0.0.1:8000 > ../rn06-django.log 2>&1 &)
+          nohup npm run start > rn06-next.log 2>&1 &
+          python - <<'PY'
+          import socket, time
+          for port in (8000, 3000):
+              for _ in range(90):
+                  try:
+                      with socket.create_connection(("127.0.0.1", port), timeout=1):
+                          break
+                  except OSError:
+                      time.sleep(1)
+              else:
+                  raise SystemExit(f"Port {port} did not open")
+          print("LIVE_UI_AND_BACKEND_READY")
+          PY
+
+      - name: Live Playwright test with distinct real logins
+        run: npx playwright test --config=e2e/playwright.config.ts
+
+      - name: Store visual proof and failing traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rn06-live-e2e-evidence
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            test-results/
+            rn06-django.log
+            rn06-next.log
+            playwright-report/
