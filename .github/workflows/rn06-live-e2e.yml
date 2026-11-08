@@ -47,6 +47,18 @@ jobs:
           ref: a669916c6fcadd934d4aa3ef830c68adbbfbf9cc
           path: backend
 
+      - name: Refuse stale backend pin relative to RN06 branch
+        run: |
+          PINNED_SHA="$(git -C backend rev-parse HEAD)"
+          BRANCH_SHA="$(git ls-remote https://github.com/enoqueJonas/mono-backend.git refs/heads/feat/rn06-independent-disbursement-approval | cut -f1)"
+          if [ -z "$BRANCH_SHA" ] || [ "$PINNED_SHA" != "$BRANCH_SHA" ]; then
+            echo "::error::Backend PR #26 moved or cannot be verified; update the pinned commit and rerun the full E2E suite."
+            echo "Pinned: $PINNED_SHA"
+            echo "Branch: $BRANCH_SHA"
+            exit 1
+          fi
+          echo "RN06_BACKEND_PIN_CURRENT=$PINNED_SHA"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
