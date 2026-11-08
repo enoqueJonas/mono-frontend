@@ -12,6 +12,7 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Skeleton } from "@/components/ui/LoadingState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { disbursementsApi } from "@/lib/api/disbursements";
+import { useAuth } from "@/hooks/useAuth";
 import { groupsApi } from "@/lib/api/groups";
 import { formatDate, formatMoney } from "@/lib/utils";
 import { createDisbursementSchema, type CreateDisbursementFormData } from "@/schemas/disbursement";
@@ -24,6 +25,7 @@ type PendingAction = { type: "approve" | "complete"; item: Disbursement } | null
 
 export default function DisbursementsPage({ params }: PageProps) {
   const { groupId } = use(params);
+  const { user } = useAuth();
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [items, setItems] = useState<Disbursement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,10 +77,10 @@ export default function DisbursementsPage({ params }: PageProps) {
     try {
       if (pendingAction.type === "approve") {
         await disbursementsApi.approveDisbursement(groupId, pendingAction.item.id);
-        setSuccess("Desembolso aprovado com sucesso.");
+        setSuccess("Voto registado. A aprovação depende de votos independentes suficientes.");
       } else {
         await disbursementsApi.completeDisbursement(groupId, pendingAction.item.id);
-        setSuccess("Desembolso concluído com sucesso. O próximo membro passou a ser o beneficiário actual.");
+        setSuccess("Conclusão administrativa registada. Isto não confirma uma transferência financeira externa.");
       }
       setItems(await disbursementsApi.listGroupDisbursements(groupId));
       setPendingAction(null);
@@ -88,7 +90,13 @@ export default function DisbursementsPage({ params }: PageProps) {
     } finally { setIsActionRunning(false); }
   };
 
-  const renderCard = (item: Disbursement) => (
+  const renderCard = (item: Disbursement) => {
+    const voterId = user?.id ? String(user.id) : null;
+    const canVote = item.status === "AWAITING_CONSENSUS"
+      && Boolean(voterId)
+      && (item.eligible_approver_ids ?? []).includes(voterId!)
+      && !(item.approved_by_ids ?? []).includes(voterId!);
+    return (
     <article key={item.id} className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -104,15 +112,22 @@ export default function DisbursementsPage({ params }: PageProps) {
         <div><p className="text-slate-400">Solicitado em</p><p className="mt-1 font-medium text-slate-700">{formatDate(item.requested_at)}</p></div>
         <div><p className="text-slate-400">Concluído em</p><p className="mt-1 font-medium text-slate-700">{formatDate(item.completed_at)}</p></div>
       </div>
+      {typeof item.required_approvals === "number" && (
+        <p className="text-sm text-slate-700" role="status">
+          Aprovações: <strong>{item.approval_count ?? 0} de {item.required_approvals}</strong>.
+          {item.status === "AWAITING_CONSENSUS" ? " Aguardam-se confirmações dos membros elegíveis." : ""}
+        </p>
+      )}
       {item.failure_reason && <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{item.failure_reason}</div>}
-      {isManager && item.status !== "COMPLETED" && (
+      {(canVote || (isManager && item.status === "APPROVED")) && (
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-          {item.status === "AWAITING_CONSENSUS" && <Button size="sm" onClick={() => setPendingAction({ type: "approve", item })}>Aprovar</Button>}
-          {item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Marcar como concluído</Button>}
+          {canVote && <Button size="sm" onClick={() => setPendingAction({ type: "approve", item })}>Registar o meu voto</Button>}
+          {isManager && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
         </div>
       )}
     </article>
-  );
+    );
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -147,9 +162,9 @@ export default function DisbursementsPage({ params }: PageProps) {
         isOpen={Boolean(pendingAction)}
         onClose={() => { if (!isActionRunning) setPendingAction(null); }}
         onConfirm={runAction}
-        title={pendingAction?.type === "approve" ? "Aprovar desembolso" : "Concluir desembolso"}
-        description={pendingAction?.type === "approve" ? "Confirma a aprovação deste desembolso?" : "Ao concluir este desembolso, o próximo membro da rotação passará a ser o beneficiário actual."}
-        confirmText={pendingAction?.type === "approve" ? "Aprovar" : "Concluir"}
+        title={pendingAction?.type === "approve" ? "Registar voto" : "Registar conclusão administrativa"}
+        description={pendingAction?.type === "approve" ? "Confirma o seu voto? Ficará associado à sua conta, mas não corresponde a uma assinatura de carteira nem transfere fundos." : "A conclusão actualiza apenas o registo da aplicação e a rotação. Confirme que a execução financeira foi verificada fora do protótipo."}
+        confirmText={pendingAction?.type === "approve" ? "Confirmar voto" : "Registar"}
         cancelText="Cancelar"
         isLoading={isActionRunning}
       />

@@ -169,7 +169,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-slate-500">
-          Plataforma segura com integridade criptográfica e governança distribuída
+          Protótipo experimental com registos verificáveis e aprovação de membros
         </p>
       </div>
     </div>
