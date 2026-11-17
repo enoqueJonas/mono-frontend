@@ -20,6 +20,7 @@ interface Props {
 }
 
 const memberUserId = (member: GroupMember): string | null => {
+  if (member.user_id !== undefined && member.user_id !== null) return String(member.user_id);
   const value = member.user;
   if (value === undefined || value === null) return null;
   if (typeof value === "string" || typeof value === "number") return String(value);
@@ -131,7 +132,7 @@ export function ExternalDisbursementWorkflow({
               <option value="">Seleccione um membro activo</option>
               {members.filter(m => m.status === "ACTIVE").map(m => (
                 <option key={String(m.id)} value={String(m.id)}>
-                  {m.name || m.phone_number || memberUserId(m) || String(m.id)} · {m.role}
+                  {m.full_name || m.name || m.phone_number || memberUserId(m) || String(m.id)} · {m.role}
                 </option>
               ))}
             </select>
