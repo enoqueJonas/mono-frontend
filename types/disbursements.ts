@@ -20,6 +20,12 @@ export interface Disbursement {
   approval_count?: number;
   eligible_approver_ids?: string[];
   approved_by_ids?: string[];
+  payout_required?: boolean;
+  payout_status?: "READY" | "INTENT_ANCHORING" | "INTENT_ANCHORED" | "SENDING"
+    | "PENDING" | "UNKNOWN" | "PROVIDER_CONFIRMED" | "PROVIDER_FAILED"
+    | "SETTLEMENT_ANCHORING" | "SETTLEMENT_ANCHORED" | null;
+  payout_reference?: string | null;
+  payout_transaction_id?: string | null;
   requested_at: string;
   completed_at: string | null;
   failure_reason: string | null;
