@@ -21,7 +21,10 @@ import type { GroupDetail } from "@/types/groups";
 
 interface PageProps { params: Promise<{ groupId: string }>; }
 
-type PendingAction = { type: "approve" | "complete"; item: Disbursement } | null;
+type PendingAction = { type: "approve" | "complete" | "sandbox"; item: Disbursement } | null;
+
+// UX flag is only a presentation switch; the backend enforces sandbox authorization.
+const sandboxMode = process.env.NEXT_PUBLIC_SANDBOX_PAYMENTS_ENABLED === "true";
 
 export default function DisbursementsPage({ params }: PageProps) {
   const { groupId } = use(params);
@@ -78,6 +81,9 @@ export default function DisbursementsPage({ params }: PageProps) {
       if (pendingAction.type === "approve") {
         await disbursementsApi.approveDisbursement(groupId, pendingAction.item.id);
         setSuccess("Voto registado. A aprovação depende de votos independentes suficientes.");
+      } else if (pendingAction.type === "sandbox") {
+        await disbursementsApi.executeSandboxDisbursement(groupId, pendingAction.item.id);
+        setSuccess("Pagamento fictício confirmado no simulador e prova registada em Ganache. Não houve transferência de dinheiro real.");
       } else {
         await disbursementsApi.completeDisbursement(groupId, pendingAction.item.id);
         setSuccess("Conclusão administrativa registada. Isto não confirma uma transferência financeira externa.");
@@ -119,10 +125,15 @@ export default function DisbursementsPage({ params }: PageProps) {
         </p>
       )}
       {item.failure_reason && <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{item.failure_reason}</div>}
-      {(canVote || (isManager && item.status === "APPROVED")) && (
+      {(canVote || (isManager && (item.status === "APPROVED" || (sandboxMode && item.status === "PROCESSING")))) && (
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           {canVote && <Button size="sm" onClick={() => setPendingAction({ type: "approve", item })}>Registar o meu voto</Button>}
-          {isManager && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
+          {isManager && !sandboxMode && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
+          {isManager && sandboxMode && (item.status === "APPROVED" || item.status === "PROCESSING") && (
+            <Button size="sm" onClick={() => setPendingAction({ type: "sandbox", item })}>
+              {item.status === "PROCESSING" ? "Reconciliar pagamento fictício" : "Executar desembolso fictício"}
+            </Button>
+          )}
         </div>
       )}
     </article>
@@ -136,6 +147,11 @@ export default function DisbursementsPage({ params }: PageProps) {
 
       {!isLoading && group && <>
         <GroupHeaderNav group={group} activeTab="disbursements" />
+        {sandboxMode && (
+          <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            Ambiente de testes: os pagamentos utilizam saldos fictícios e provas numa blockchain local. Nenhum dinheiro real é transferido.
+          </div>
+        )}
         {success && <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"><CheckCircle2 className="h-4 w-4" />{success}</div>}
 
         {isManager && <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
@@ -162,9 +178,13 @@ export default function DisbursementsPage({ params }: PageProps) {
         isOpen={Boolean(pendingAction)}
         onClose={() => { if (!isActionRunning) setPendingAction(null); }}
         onConfirm={runAction}
-        title={pendingAction?.type === "approve" ? "Registar voto" : "Registar conclusão administrativa"}
-        description={pendingAction?.type === "approve" ? "Confirma o seu voto? Ficará associado à sua conta, mas não corresponde a uma assinatura de carteira nem transfere fundos." : "A conclusão actualiza apenas o registo da aplicação e a rotação. Confirme que a execução financeira foi verificada fora do protótipo."}
-        confirmText={pendingAction?.type === "approve" ? "Confirmar voto" : "Registar"}
+        title={pendingAction?.type === "approve" ? "Registar voto" : pendingAction?.type === "sandbox" ? "Desembolso fictício" : "Registar conclusão administrativa"}
+        description={pendingAction?.type === "approve"
+          ? "Confirma o seu voto? Ficará associado à sua conta, mas não corresponde a uma assinatura de carteira nem transfere fundos."
+          : pendingAction?.type === "sandbox"
+            ? "Confirmar transferência APENAS FICTÍCIA? O grupo será debitado na sandbox e o resultado será registado no Ganache. Uma repetição da operação não deve causar novo débito."
+            : "A conclusão actualiza apenas o registo da aplicação e a rotação. Confirme que a execução financeira foi verificada fora do protótipo."}
+        confirmText={pendingAction?.type === "approve" ? "Confirmar voto" : pendingAction?.type === "sandbox" ? "Simular desembolso" : "Registar"}
         cancelText="Cancelar"
         isLoading={isActionRunning}
       />
