@@ -102,6 +102,26 @@ const STATUS_MAP: Record<string, StatusConfig> = {
     icon: <Clock className="w-3 h-3 text-amber-600" />,
     classes: "bg-amber-50 text-amber-800 border border-amber-200",
   },
+  AWAITING_PAYMENT: {
+    label: "Aguarda pagamento externo",
+    icon: <Clock className="w-3 h-3 text-blue-600" />,
+    classes: "bg-blue-50 text-blue-700 border border-blue-200",
+  },
+  AWAITING_CONFIRMATION: {
+    label: "Aguarda beneficiário",
+    icon: <Clock className="w-3 h-3 text-amber-600" />,
+    classes: "bg-amber-50 text-amber-800 border border-amber-200",
+  },
+  EVIDENCE_PENDING: {
+    label: "Aguarda ancoragem",
+    icon: <Clock className="w-3 h-3 text-indigo-600" />,
+    classes: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+  },
+  DISPUTED: {
+    label: "Pagamento contestado",
+    icon: <AlertCircle className="w-3 h-3 text-rose-600" />,
+    classes: "bg-rose-50 text-rose-700 border border-rose-200",
+  },
   APPROVED: {
     label: "Aprovado",
     icon: <CheckCircle2 className="w-3 h-3 text-blue-600" />,
