@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Banknote, CheckCircle2, PlusCircle } from "lucide-react";
 import { GroupHeaderNav } from "@/components/groups/GroupHeaderNav";
+import { ExternalDisbursementWorkflow } from "@/components/groups/ExternalDisbursementWorkflow";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -24,7 +25,8 @@ interface PageProps { params: Promise<{ groupId: string }>; }
 type PendingAction = { type: "approve" | "complete" | "sandbox"; item: Disbursement } | null;
 
 // UX flag is only a presentation switch; the backend enforces sandbox authorization.
-const sandboxMode = process.env.NEXT_PUBLIC_SANDBOX_PAYMENTS_ENABLED === "true";
+const nonCustodialMode = process.env.NEXT_PUBLIC_NON_CUSTODIAL_DISBURSEMENTS_ENABLED === "true";
+const sandboxMode = !nonCustodialMode && process.env.NEXT_PUBLIC_SANDBOX_PAYMENTS_ENABLED === "true";
 
 export default function DisbursementsPage({ params }: PageProps) {
   const { groupId } = use(params);
@@ -129,7 +131,7 @@ export default function DisbursementsPage({ params }: PageProps) {
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           {canVote && <Button size="sm" onClick={() => setPendingAction({ type: "approve", item })}>Registar o meu voto</Button>}
           {isManager && !sandboxMode && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
-          {isManager && sandboxMode && (item.status === "APPROVED" || item.status === "PROCESSING") && (
+          {isManager && sandboxMode && !nonCustodialMode && (item.status === "APPROVED" || item.status === "PROCESSING") && (
             <Button size="sm" onClick={() => setPendingAction({ type: "sandbox", item })}>
               {item.status === "PROCESSING" ? "Reconciliar pagamento fictício" : "Executar desembolso fictício"}
             </Button>
@@ -172,6 +174,15 @@ export default function DisbursementsPage({ params }: PageProps) {
           <div className="flex items-center gap-2"><Banknote className="h-5 w-5 text-slate-600" /><h2 className="font-semibold text-slate-900">Desembolsos</h2><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{items.length}</span></div>
           {items.length === 0 ? <EmptyState icon={Banknote} title="Este grupo ainda não possui desembolsos." description="Os desembolsos criados para os ciclos da rotação aparecerão aqui." /> : <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">{items.map(renderCard)}</div>}
         </section>
+        {nonCustodialMode && (
+          <ExternalDisbursementWorkflow
+            groupId={groupId}
+            items={items}
+            currentUserId={user?.id ? String(user.id) : null}
+            isManager={isManager}
+            onRefresh={loadData}
+          />
+        )}
       </>}
 
       <ConfirmDialog
