@@ -31,6 +31,7 @@ export default function DisbursementsPage({ params }: PageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [transferReferences, setTransferReferences] = useState<Record<string, string>>({});
   const [isActionRunning, setIsActionRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -79,8 +80,12 @@ export default function DisbursementsPage({ params }: PageProps) {
         await disbursementsApi.approveDisbursement(groupId, pendingAction.item.id);
         setSuccess("Voto registado. A aprovação depende de votos independentes suficientes.");
       } else {
-        await disbursementsApi.completeDisbursement(groupId, pendingAction.item.id);
-        setSuccess("Conclusão administrativa registada. Isto não confirma uma transferência financeira externa.");
+        const reference = (transferReferences[pendingAction.item.id] || "").trim();
+        if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{4,99}$/.test(reference)) {
+          throw new Error("Introduza uma referência válida da transferência antes de concluir.");
+        }
+        await disbursementsApi.completeDisbursement(groupId, pendingAction.item.id, reference);
+        setSuccess("Declaração do gestor registada. A referência não comprova liquidação financeira externa.");
       }
       setItems(await disbursementsApi.listGroupDisbursements(groupId));
       setPendingAction(null);
@@ -118,11 +123,40 @@ export default function DisbursementsPage({ params }: PageProps) {
           {item.status === "AWAITING_CONSENSUS" ? " Aguardam-se confirmações dos membros elegíveis." : ""}
         </p>
       )}
+      {item.external_transfer_reference && (
+        <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+          Transferência declarada pelo gestor. Referência: <strong>{item.external_transfer_reference}</strong>.
+          Este registo não constitui verificação pelo operador financeiro.
+        </p>
+      )}
       {item.failure_reason && <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{item.failure_reason}</div>}
       {(canVote || (isManager && item.status === "APPROVED")) && (
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           {canVote && <Button size="sm" onClick={() => setPendingAction({ type: "approve", item })}>Registar o meu voto</Button>}
-          {isManager && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
+          {isManager && item.status === "APPROVED" && (
+            <div className="w-full space-y-2 rounded-lg border border-slate-200 p-3">
+              <label className="block text-sm font-medium text-slate-700">
+                Referência da transferência efectuada na carteira móvel
+                <input
+                  type="text"
+                  value={transferReferences[item.id] || ""}
+                  onChange={e => setTransferReferences(previous => ({ ...previous, [item.id]: e.target.value }))}
+                  maxLength={100}
+                  placeholder="Referência da transacção"
+                  className="mt-1 h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                />
+              </label>
+              <p className="text-xs text-slate-500">
+                O gestor declara que efectuou a transferência fora do Mono. A referência
+                permite rastrear a declaração, mas não prova liquidação externa.
+              </p>
+              <Button size="sm"
+                disabled={!/^[A-Za-z0-9][A-Za-z0-9._/-]{4,99}$/.test((transferReferences[item.id] || "").trim())}
+                onClick={() => setPendingAction({ type: "complete", item })}>
+                Declarar transferência e concluir
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </article>
@@ -163,7 +197,7 @@ export default function DisbursementsPage({ params }: PageProps) {
         onClose={() => { if (!isActionRunning) setPendingAction(null); }}
         onConfirm={runAction}
         title={pendingAction?.type === "approve" ? "Registar voto" : "Registar conclusão administrativa"}
-        description={pendingAction?.type === "approve" ? "Confirma o seu voto? Ficará associado à sua conta, mas não corresponde a uma assinatura de carteira nem transfere fundos." : "A conclusão actualiza apenas o registo da aplicação e a rotação. Confirme que a execução financeira foi verificada fora do protótipo."}
+        description={pendingAction?.type === "approve" ? "Confirma o seu voto? Ficará associado à sua conta, mas não corresponde a uma assinatura de carteira nem transfere fundos." : "Declaro que efectuei a transferência externa e que a referência indicada corresponde ao desembolso aprovado. O Mono regista a minha declaração, sem validação pelo operador financeiro."}
         confirmText={pendingAction?.type === "approve" ? "Confirmar voto" : "Registar"}
         cancelText="Cancelar"
         isLoading={isActionRunning}
