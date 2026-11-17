@@ -116,7 +116,10 @@ export function ExternalDisbursementWorkflow({
       {mandate ? (
         <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
           Carteira externa: <strong>{mandate.provider} · {mandate.wallet_alias}</strong>.
-          A transferência é da responsabilidade do membro designado.
+          Responsável: <strong>{members.find(m => String(m.id) === String(mandate.custodian))?.full_name
+            || members.find(m => String(m.id) === String(mandate.custodian))?.name
+            || "Membro designado"}</strong>.
+          Os membros devem conhecer esta designação antes de votar na RN06.
         </p>
       ) : isManager ? (
         <div className="space-y-3 rounded-lg border border-slate-200 p-3">
@@ -160,7 +163,7 @@ export function ExternalDisbursementWorkflow({
           <Button onClick={appoint} isLoading={busy}>Designar responsável</Button>
         </div>
       ) : (
-        <p className="text-sm text-amber-700">O gestor ainda não designou o responsável pela carteira externa.</p>
+        <p className="text-sm text-amber-700">O gestor ainda não designou o responsável pela carteira externa. Esta designação é obrigatória antes da proposta de desembolso.</p>
       )}
 
       <div className="space-y-4">
