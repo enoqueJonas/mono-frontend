@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [master, feat/rn06-member-voting-ui]
   push:
-    branches: [feat/sandbox-disbursement-ui]
+    branches: [feat/sandbox-disbursement-ui, feat/noncustodial-payment-confirmation-ui]
   workflow_dispatch:
 
 jobs:
