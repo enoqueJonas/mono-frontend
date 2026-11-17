@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { CreateDisbursementPayload, Disbursement } from "@/types/disbursements";
+import type { CreateDisbursementPayload, Disbursement, ExternalPaymentReport, TreasuryMandate, ExternalWalletProvider } from "@/types/disbursements";
 
 function unwrapList(response: unknown): Disbursement[] {
   if (Array.isArray(response)) return response as Disbursement[];
@@ -53,5 +53,67 @@ export const disbursementsApi = {
       { method: "POST" },
     );
     return unwrapOne(response);
+  },
+  async getTreasuryMandate(groupId: string): Promise<TreasuryMandate | null> {
+    const response = await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/treasury-mandate/`, { method: "GET" }
+    );
+    if (response && typeof response === "object") {
+      const data = (response as Record<string, unknown>).data;
+      return data && typeof data === "object" ? data as TreasuryMandate : null;
+    }
+    return null;
+  },
+
+  async appointTreasuryMandate(groupId: string, payload: {
+    group_member_id: string; provider: ExternalWalletProvider; wallet_alias: string;
+  }): Promise<TreasuryMandate> {
+    const response = await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/treasury-mandate/`,
+      { method: "POST", body: JSON.stringify(payload) },
+    );
+    const obj = response as { data?: TreasuryMandate };
+    if (!obj?.data) throw new Error("Resposta de nomeação inválida.");
+    return obj.data;
+  },
+
+  async openExternalPayment(groupId: string, disbursementId: string): Promise<Disbursement> {
+    return unwrapOne(await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/disbursements/${disbursementId}/open-external/`,
+      { method: "POST" },
+    ));
+  },
+
+  async reportExternalPayment(groupId: string, disbursementId: string, reference: string): Promise<Disbursement> {
+    return unwrapOne(await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/disbursements/${disbursementId}/report-external/`,
+      { method: "POST", body: JSON.stringify({ transfer_reference: reference }) },
+    ));
+  },
+
+  async getExternalPaymentReport(groupId: string, disbursementId: string): Promise<ExternalPaymentReport | null> {
+    const response = await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/disbursements/${disbursementId}/report-external/`,
+      { method: "GET" },
+    );
+    if (response && typeof response === "object") {
+      const data = (response as Record<string, unknown>).data;
+      return data && typeof data === "object" ? data as ExternalPaymentReport : null;
+    }
+    return null;
+  },
+
+  async acknowledgeExternalPayment(groupId: string, disbursementId: string, received: boolean, dispute_reason = ""): Promise<Disbursement> {
+    return unwrapOne(await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/disbursements/${disbursementId}/acknowledge-external/`,
+      { method: "POST", body: JSON.stringify({ received, dispute_reason }) },
+    ));
+  },
+
+  async finalizeExternalPayment(groupId: string, disbursementId: string): Promise<Disbursement> {
+    return unwrapOne(await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/disbursements/${disbursementId}/finalize-external/`,
+      { method: "POST" },
+    ));
   },
 };
