@@ -127,10 +127,10 @@ export default function DisbursementsPage({ params }: PageProps) {
         </p>
       )}
       {item.failure_reason && <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{item.failure_reason}</div>}
-      {(canVote || (isManager && (item.status === "APPROVED" || (sandboxMode && item.status === "PROCESSING")))) && (
+      {(canVote || (isManager && !nonCustodialMode && (item.status === "APPROVED" || (sandboxMode && item.status === "PROCESSING")))) && (
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           {canVote && <Button size="sm" onClick={() => setPendingAction({ type: "approve", item })}>Registar o meu voto</Button>}
-          {isManager && !sandboxMode && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
+          {isManager && !sandboxMode && !nonCustodialMode && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
           {isManager && sandboxMode && !nonCustodialMode && (item.status === "APPROVED" || item.status === "PROCESSING") && (
             <Button size="sm" onClick={() => setPendingAction({ type: "sandbox", item })}>
               {item.status === "PROCESSING" ? "Reconciliar pagamento fictício" : "Executar desembolso fictício"}
