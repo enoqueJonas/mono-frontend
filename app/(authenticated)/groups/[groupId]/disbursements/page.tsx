@@ -12,6 +12,7 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Skeleton } from "@/components/ui/LoadingState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { disbursementsApi } from "@/lib/api/disbursements";
+import { ExternalWalletCustodyPanel, ExternalPaymentActions } from "@/components/disbursements/ExternalWalletControls";
 import { useAuth } from "@/hooks/useAuth";
 import { groupsApi } from "@/lib/api/groups";
 import { formatDate, formatMoney } from "@/lib/utils";
@@ -22,6 +23,8 @@ import type { GroupDetail } from "@/types/groups";
 interface PageProps { params: Promise<{ groupId: string }>; }
 
 type PendingAction = { type: "approve" | "complete"; item: Disbursement } | null;
+
+const externalWalletMode = process.env.NEXT_PUBLIC_NONCUSTODIAL_WALLET_FLOW_ENABLED === "true";
 
 export default function DisbursementsPage({ params }: PageProps) {
   const { groupId } = use(params);
@@ -119,10 +122,11 @@ export default function DisbursementsPage({ params }: PageProps) {
         </p>
       )}
       {item.failure_reason && <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{item.failure_reason}</div>}
-      {(canVote || (isManager && item.status === "APPROVED")) && (
+      {externalWalletMode && <ExternalPaymentActions groupId={groupId} item={item} userId={voterId} onUpdated={async () => { setItems(await disbursementsApi.listGroupDisbursements(groupId)); }} />}
+      {(canVote || (isManager && !externalWalletMode && item.status === "APPROVED")) && (
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           {canVote && <Button size="sm" onClick={() => setPendingAction({ type: "approve", item })}>Registar o meu voto</Button>}
-          {isManager && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
+          {isManager && !externalWalletMode && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
         </div>
       )}
     </article>
@@ -136,6 +140,7 @@ export default function DisbursementsPage({ params }: PageProps) {
 
       {!isLoading && group && <>
         <GroupHeaderNav group={group} activeTab="disbursements" />
+        {externalWalletMode && <ExternalWalletCustodyPanel groupId={groupId} isManager={isManager} />}
         {success && <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"><CheckCircle2 className="h-4 w-4" />{success}</div>}
 
         {isManager && <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
