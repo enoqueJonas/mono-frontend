@@ -3,6 +3,8 @@ name: RN06 frontend validation
 on:
   pull_request:
     branches: [master, feat/rn06-member-voting-ui]
+  push:
+    branches: [feat/sandbox-disbursement-ui]
   workflow_dispatch:
 
 jobs:
