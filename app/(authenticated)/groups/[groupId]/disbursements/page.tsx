@@ -149,6 +149,15 @@ export default function DisbursementsPage({ params }: PageProps) {
 
       {!isLoading && group && <>
         <GroupHeaderNav group={group} activeTab="disbursements" />
+        {nonCustodialMode && (
+          <ExternalDisbursementWorkflow
+            groupId={groupId}
+            items={items}
+            currentUserId={user?.id ? String(user.id) : null}
+            isManager={isManager}
+            onRefresh={loadData}
+          />
+        )}
         {sandboxMode && (
           <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
             Ambiente de testes: os pagamentos utilizam saldos fictícios e provas numa blockchain local. Nenhum dinheiro real é transferido.
@@ -174,15 +183,6 @@ export default function DisbursementsPage({ params }: PageProps) {
           <div className="flex items-center gap-2"><Banknote className="h-5 w-5 text-slate-600" /><h2 className="font-semibold text-slate-900">Desembolsos</h2><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{items.length}</span></div>
           {items.length === 0 ? <EmptyState icon={Banknote} title="Este grupo ainda não possui desembolsos." description="Os desembolsos criados para os ciclos da rotação aparecerão aqui." /> : <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">{items.map(renderCard)}</div>}
         </section>
-        {nonCustodialMode && (
-          <ExternalDisbursementWorkflow
-            groupId={groupId}
-            items={items}
-            currentUserId={user?.id ? String(user.id) : null}
-            isManager={isManager}
-            onRefresh={loadData}
-          />
-        )}
       </>}
 
       <ConfirmDialog
