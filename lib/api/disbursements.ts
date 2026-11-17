@@ -43,8 +43,11 @@ export const disbursementsApi = {
     return unwrapOne(response);
   },
 
-  async completeDisbursement(groupId: string, disbursementId: string): Promise<Disbursement> {
-    const response = await apiClient<unknown>(`/api/v1/groups/${groupId}/disbursements/${disbursementId}/complete/`, { method: "POST" });
+  async completeDisbursement(groupId: string, disbursementId: string, transferReference: string): Promise<Disbursement> {
+    const response = await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/disbursements/${disbursementId}/complete/`,
+      { method: "POST", body: JSON.stringify({ transfer_reference: transferReference }) },
+    );
     return unwrapOne(response);
   },
 };
