@@ -21,7 +21,7 @@ import type { GroupDetail } from "@/types/groups";
 
 interface PageProps { params: Promise<{ groupId: string }>; }
 
-type PendingAction = { type: "approve" | "complete"; item: Disbursement } | null;
+type PendingAction = { type: "approve" | "complete" | "execute" | "reconcile" | "recover"; item: Disbursement } | null;
 
 export default function DisbursementsPage({ params }: PageProps) {
   const { groupId } = use(params);
@@ -78,6 +78,15 @@ export default function DisbursementsPage({ params }: PageProps) {
       if (pendingAction.type === "approve") {
         await disbursementsApi.approveDisbursement(groupId, pendingAction.item.id);
         setSuccess("Voto registado. A aprovação depende de votos independentes suficientes.");
+      } else if (pendingAction.type === "execute") {
+        await disbursementsApi.executeDisbursement(groupId, pendingAction.item.id);
+        setSuccess("Pedido M-Pesa enviado. O desembolso NÃO está concluído até confirmação do fornecedor.");
+      } else if (pendingAction.type === "reconcile") {
+        await disbursementsApi.reconcileDisbursement(groupId, pendingAction.item.id);
+        setSuccess("Estado financeiro consultado. Confira se o pagamento foi realmente confirmado.");
+      } else if (pendingAction.type === "recover") {
+        await disbursementsApi.recoverDisbursementProof(groupId, pendingAction.item.id);
+        setSuccess("Prova blockchain recuperada sem reenviar dinheiro.");
       } else {
         await disbursementsApi.completeDisbursement(groupId, pendingAction.item.id);
         setSuccess("Conclusão administrativa registada. Isto não confirma uma transferência financeira externa.");
@@ -119,10 +128,32 @@ export default function DisbursementsPage({ params }: PageProps) {
         </p>
       )}
       {item.failure_reason && <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{item.failure_reason}</div>}
+      {item.payout_required && (
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700" role="status">
+          <p><strong>Pagamento externo:</strong> {item.payout_status ?? "Ainda não iniciado"}</p>
+          {item.payout_reference && <p>Referência única: <code>{item.payout_reference}</code></p>}
+          {item.payout_transaction_id && <p>Referência do operador: <code>{item.payout_transaction_id}</code></p>}
+          <p>Uma aprovação não confirma a transferência. Falhas ambíguas devem ser reconciliadas; nunca reenviar automaticamente.</p>
+        </div>
+      )}
       {(canVote || (isManager && item.status === "APPROVED")) && (
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           {canVote && <Button size="sm" onClick={() => setPendingAction({ type: "approve", item })}>Registar o meu voto</Button>}
-          {isManager && item.status === "APPROVED" && <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>}
+          {isManager && item.status === "APPROVED" && !item.payout_required && (
+            <Button size="sm" onClick={() => setPendingAction({ type: "complete", item })}>Registar conclusão administrativa</Button>
+          )}
+          {isManager && item.status === "APPROVED" && item.payout_required
+            && (!item.payout_status || ["READY", "INTENT_ANCHORED"].includes(item.payout_status)) && (
+            <Button size="sm" onClick={() => setPendingAction({ type: "execute", item })}>Solicitar transferência M-Pesa</Button>
+          )}
+          {isManager && item.payout_required
+            && ["SENDING", "PENDING", "UNKNOWN"].includes(item.payout_status ?? "") && (
+            <Button size="sm" onClick={() => setPendingAction({ type: "reconcile", item })}>Consultar estado no M-Pesa</Button>
+          )}
+          {isManager && item.payout_required
+            && ["INTENT_ANCHORING", "PROVIDER_CONFIRMED", "SETTLEMENT_ANCHORING", "SETTLEMENT_ANCHORED"].includes(item.payout_status ?? "") && (
+            <Button size="sm" onClick={() => setPendingAction({ type: "recover", item })}>Recuperar prova blockchain</Button>
+          )}
         </div>
       )}
     </article>
@@ -162,9 +193,17 @@ export default function DisbursementsPage({ params }: PageProps) {
         isOpen={Boolean(pendingAction)}
         onClose={() => { if (!isActionRunning) setPendingAction(null); }}
         onConfirm={runAction}
-        title={pendingAction?.type === "approve" ? "Registar voto" : "Registar conclusão administrativa"}
-        description={pendingAction?.type === "approve" ? "Confirma o seu voto? Ficará associado à sua conta, mas não corresponde a uma assinatura de carteira nem transfere fundos." : "A conclusão actualiza apenas o registo da aplicação e a rotação. Confirme que a execução financeira foi verificada fora do protótipo."}
-        confirmText={pendingAction?.type === "approve" ? "Confirmar voto" : "Registar"}
+        title={pendingAction?.type === "approve" ? "Registar voto" : pendingAction?.type === "execute" ? "Solicitar transferência financeira" : pendingAction?.type === "reconcile" ? "Consultar operador" : pendingAction?.type === "recover" ? "Recuperar ancoragem" : "Registar conclusão"}
+        description={pendingAction?.type === "approve"
+          ? "Confirma o seu voto? Não equivale a assinatura de carteira."
+          : pendingAction?.type === "execute"
+            ? "Esta acção pode iniciar uma transferência monetária real quando M-Pesa B2C estiver configurado. Confirma o envio para a carteira do beneficiário? Não repita após timeout."
+            : pendingAction?.type === "reconcile"
+              ? "Consulta a referência existente junto ao fornecedor, sem enviar um novo pagamento."
+              : pendingAction?.type === "recover"
+                ? "Verifica ou recupera apenas a prova blockchain. Não reenvia fundos."
+                : "O registo administrativo não prova uma transferência financeira externa."}
+        confirmText={pendingAction?.type === "approve" ? "Confirmar voto" : pendingAction?.type === "execute" ? "Solicitar pagamento" : "Confirmar"}
         cancelText="Cancelar"
         isLoading={isActionRunning}
       />
