@@ -47,4 +47,11 @@ export const disbursementsApi = {
     const response = await apiClient<unknown>(`/api/v1/groups/${groupId}/disbursements/${disbursementId}/complete/`, { method: "POST" });
     return unwrapOne(response);
   },
+  async executeSandboxDisbursement(groupId: string, disbursementId: string): Promise<Disbursement> {
+    const response = await apiClient<unknown>(
+      `/api/v1/groups/${groupId}/disbursements/${disbursementId}/sandbox-execute/`,
+      { method: "POST" },
+    );
+    return unwrapOne(response);
+  },
 };
