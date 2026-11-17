@@ -97,6 +97,11 @@ const STATUS_MAP: Record<string, StatusConfig> = {
     icon: <Clock className="w-3 h-3 text-amber-600" />,
     classes: "bg-amber-50 text-amber-700 border border-amber-200",
   },
+  PROCESSING: {
+    label: "Em processamento (simulador)",
+    icon: <Clock className="w-3 h-3 text-amber-600" />,
+    classes: "bg-amber-50 text-amber-800 border border-amber-200",
+  },
   APPROVED: {
     label: "Aprovado",
     icon: <CheckCircle2 className="w-3 h-3 text-blue-600" />,
