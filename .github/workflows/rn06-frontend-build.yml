@@ -2,7 +2,9 @@ name: RN06 frontend validation
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, feat/rn06-member-voting-ui]
+  push:
+    branches: [feat/noncustodial-payment-reporting-ui]
   workflow_dispatch:
 
 jobs:
