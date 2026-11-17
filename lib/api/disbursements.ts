@@ -43,6 +43,22 @@ export const disbursementsApi = {
     return unwrapOne(response);
   },
 
+
+  async executeDisbursement(groupId: string, disbursementId: string): Promise<Disbursement> {
+    const response = await apiClient<unknown>(`/api/v1/groups/${groupId}/disbursements/${disbursementId}/execute/`, { method: "POST" });
+    return unwrapOne(response);
+  },
+
+  async reconcileDisbursement(groupId: string, disbursementId: string): Promise<Disbursement> {
+    const response = await apiClient<unknown>(`/api/v1/groups/${groupId}/disbursements/${disbursementId}/reconcile/`, { method: "POST" });
+    return unwrapOne(response);
+  },
+
+  async recoverDisbursementProof(groupId: string, disbursementId: string): Promise<Disbursement> {
+    const response = await apiClient<unknown>(`/api/v1/groups/${groupId}/disbursements/${disbursementId}/recover-proof/`, { method: "POST" });
+    return unwrapOne(response);
+  },
+
   async completeDisbursement(groupId: string, disbursementId: string): Promise<Disbursement> {
     const response = await apiClient<unknown>(`/api/v1/groups/${groupId}/disbursements/${disbursementId}/complete/`, { method: "POST" });
     return unwrapOne(response);
