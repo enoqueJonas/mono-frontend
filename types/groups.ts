@@ -29,6 +29,8 @@ export type GroupMemberStatus = "ACTIVE" | "SUSPENDED" | "LEFT" | string;
 
 export interface GroupMember {
   id: string | number;
+  user_id?: string | number;
+  full_name?: string;
   user?:
     | string
     | number
