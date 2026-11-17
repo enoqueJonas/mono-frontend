@@ -1,4 +1,4 @@
-export type DisbursementStatus = "AWAITING_CONSENSUS" | "APPROVED" | "COMPLETED";
+export type DisbursementStatus = "AWAITING_CONSENSUS" | "APPROVED" | "PROCESSING" | "COMPLETED";
 
 export interface Disbursement {
   id: string;
