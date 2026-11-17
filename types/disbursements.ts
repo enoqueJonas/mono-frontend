@@ -22,6 +22,8 @@ export interface Disbursement {
   approved_by_ids?: string[];
   requested_at: string;
   completed_at: string | null;
+  external_transfer_reference: string | null;
+  transfer_declared_by: string | null;
   failure_reason: string | null;
   created_at: string;
   updated_at: string;
